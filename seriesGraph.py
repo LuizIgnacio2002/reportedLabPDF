@@ -67,6 +67,7 @@ def create_custom_plot(pa_values, fp_values, dia_values, time_labels):
     # PA and DIA line plots (left axis)
     ax1.plot(x, pa_values, color='blue', label='PA [mmHg]')
     ax1.plot(x, dia_values, color='green', label='DIA [mmHg]')  # Plot DIA values
+    
     ax1.set_xlabel('Time')
     ax1.set_ylabel('PA [mmHg] & DIA [mmHg]', color='blue')
     ax1.tick_params(axis='y', labelcolor='blue')
@@ -103,6 +104,12 @@ def create_custom_plot(pa_values, fp_values, dia_values, time_labels):
     step_x = np.array([0, start_index, start_index, end_index, end_index, last_index])  # Create the stepped x-values
     step_y = np.array([85, 85, 70, 70, 85, 85])
     ax1.step(step_x, step_y, color='yellow', linewidth=2, where='post')
+
+    # Add dummy plots for the shaded areas to include them in the legend
+    ax1.plot([], [], color='gray', alpha=0.3, label='Noche')
+    ax1.plot([], [], color='white', alpha=0.3, label='Día')
+
+
 
 
     plt.title('Tendencia PA y DIA vs Tiempo')
@@ -215,7 +222,7 @@ def main():
 
     # Create custom plot and save it to a BytesIO object
     img_buffer = create_custom_plot(pa_values, fp_values, dia_values, time_labels)
-    
+
 
     # Specify the PDF filename
     pdf_filename = "customGraph.pdf"  # Output PDF file name
