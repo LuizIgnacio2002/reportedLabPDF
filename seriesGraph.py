@@ -215,6 +215,7 @@ def main():
 
     # Create custom plot and save it to a BytesIO object
     img_buffer = create_custom_plot(pa_values, fp_values, dia_values, time_labels)
+    
 
     # Specify the PDF filename
     pdf_filename = "customGraph.pdf"  # Output PDF file name
