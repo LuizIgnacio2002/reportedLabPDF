@@ -1,32 +1,42 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+import re
+import io
+import csv
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
-import seaborn as sns  # Importing seaborn for potential future use
 
-def create_bar_graph(x, y):
-    """Create a bar graph from the given data and save it to a BytesIO object."""
-    plt.figure(figsize=(6, 4))
-    ax = plt.gca()
+def create_bar_graph(data, bins):
+    # Create a histogram
+    counts, edges, patches = plt.hist(data, bins=bins, edgecolor='black', color='green')
 
-    # Plot the bar graph
-    ax.bar(x, y, width=1, color='#00dd00', edgecolor="white", linewidth=0.7)
+    # Add percentages above the bars, but only if the percentage is greater than 0
+    total = len(data)
+    for i in range(len(patches)):
+        height = patches[i].get_height()
+        if height > 0:
+            percentage = f'{height / total:.0%}'
+            plt.text(patches[i].get_x() + patches[i].get_width() / 2, height, percentage, ha='center', va='bottom')
 
-    # Set limits and ticks for the axes
-    ax.set(xlim=(0, 8), xticks=np.arange(1, 8),
-           ylim=(0, 8), yticks=np.arange(1, 8))
-    
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
-    ax.set_title('Histogram (Todo)')
+    plt.title('Histogram of PA Values')
 
+    # Set x-axis ticks to be the bin edges
+    plt.xticks(bins)
+
+    # Set y-axis ticks and labels
+    y_ticks = np.arange(0, 100, 10)  # Adjust the step as needed
+    plt.yticks(y_ticks)
+
+    # Save the plot to a BytesIO object
     img_buffer = BytesIO()
     plt.savefig(img_buffer, format='png')
-    plt.close()
-    img_buffer.seek(0)  # Rewind the buffer to the beginning
+    img_buffer.seek(0)  # Move the cursor to the start of the buffer
+    plt.close()  # Close the plot to release memory
+
     return img_buffer
 
 def save_bar_graph_to_pdf(img_buffer, pdf_filename, x, y):
@@ -47,16 +57,65 @@ def save_bar_graph_to_pdf(img_buffer, pdf_filename, x, y):
     c.save()
     print(f"PDF generated: {pdf_filename}")
 
-def main():
-    # Data for the bar graph
-    x = 0.5 + np.arange(8)
-    y = [4.8, 5.5, 3.5, 4.6, 6.5, 6.6, 2.6, 3.0]
+def handle_csv_upload(csv_file):
+    """Process uploaded CSV file and generate a DataFrame."""
+    print("CSV file received.")
     
+    # Check if the file is empty
+    csv_file.seek(0)  # Reset file pointer to the beginning
+    file_content = csv_file.read()  # Read the content of the file
+    if not file_content:  # Check if file content is empty
+        print("Uploaded CSV file is empty.")
+        return None, 'Uploaded CSV file is empty.'
+
+    data_rows = []  # Initialize list to hold rows of data
+    try:
+        # Reset file pointer again after reading
+        csv_file.seek(0)  
+        csv_data = file_content.decode('ISO-8859-1', errors='ignore')  # Specify encoding
+        io_string = io.StringIO(csv_data)  # Create a StringIO object for CSV reading
+        reader = csv.reader(io_string, delimiter=',')  # Create CSV reader
+
+        for row in reader:
+            data_rows.append(row[:10])  # Take only the first 10 elements of each row
+
+        if data_rows and len(data_rows) > 1:
+            # Create DataFrame using the first row as header
+            df = pd.DataFrame(data_rows[1:], columns=[col.strip() for col in data_rows[0][:10]])
+            return df, None  # Return DataFrame and no error message
+
+    except Exception as e:
+        print(f"Error processing CSV file: {e}")  # Print any errors
+        return None, str(e)
+
+def main():
+    csv_filename = 'ACR.csv'
+    with open(csv_filename, 'rb') as csv_file:
+        df, error = handle_csv_upload(csv_file)
+
+    if error:
+        print(error)
+        return
+
+    # Process the DataFrame
+    df[['SYS', 'DIA']] = df['PA(mmHg)'].str.split('/', expand=True)
+
+    # Extract PA values
+    pa_values = []
+    for i in df['SYS']:
+        if re.search('-', i):
+            print(f"Invalid value found: {i}")
+        else:
+            pa_values.append(int(i))
+
+    # Create bins for x values
+    bins = [80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
+
     # Create bar graph and save it to a BytesIO object
-    img_buffer = create_bar_graph(x, y)
+    img_buffer = create_bar_graph(pa_values, bins)
     
     # Specify the PDF filename
-    pdf_filename = "histogram_report11.pdf"
+    pdf_filename = "histogram_report.pdf"
     
     # Specify the coordinates for the image
     x_position = 1 * inch  # X coordinate
