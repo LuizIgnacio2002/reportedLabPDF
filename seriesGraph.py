@@ -132,7 +132,7 @@ def save_plot_to_pdf(img_buffer, pdf_filename, y):
     image_reader = ImageReader(img_buffer)  # Read the image from buffer
 
     # Double the image dimensions
-    img_width = 9 * inch  # Set image width
+    img_width = 8 * inch  # Set image width
     img_height = (img_width * 4) / 6  # Maintain aspect ratio
 
     # Calculate x position to center the image
