@@ -13,13 +13,47 @@ import io
 import csv
 
 
-def create_custom_plot(pa_values, fp_values, time_labels):
+import numpy as np
+import matplotlib.pyplot as plt
+from io import BytesIO
+
+import numpy as np
+import matplotlib.pyplot as plt
+from io import BytesIO
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
+import re
+import io
+import csv
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
+import re
+import io
+import csv
+
+
+def create_custom_plot(pa_values, fp_values, dia_values, time_labels):
     """
     Create a line plot with shaded areas, secondary y-axis, and dotted lines between curves.
 
     Parameters:
     - pa_values: List or array of PA values (mmHg).
     - fp_values: List or array of FP values (BPM).
+    - dia_values: List or array of DIA values (mmHg).
     - time_labels: List of time labels in HH:MM format.
 
     Returns:
@@ -30,10 +64,11 @@ def create_custom_plot(pa_values, fp_values, time_labels):
     # Plot configuration
     fig, ax1 = plt.subplots(figsize=(16, 12))
 
-    # PA line plot (left axis)
+    # PA and DIA line plots (left axis)
     ax1.plot(x, pa_values, color='blue', label='PA [mmHg]')
+    ax1.plot(x, dia_values, color='green', label='DIA [mmHg]')  # Plot DIA values
     ax1.set_xlabel('Time')
-    ax1.set_ylabel('PA [mmHg]', color='blue')
+    ax1.set_ylabel('PA [mmHg] & DIA [mmHg]', color='blue')
     ax1.tick_params(axis='y', labelcolor='blue')
     ax1.set_yticks(np.arange(10, 220, 10))
     ax1.set_ylim(10, 210)
@@ -45,25 +80,49 @@ def create_custom_plot(pa_values, fp_values, time_labels):
     ax2.tick_params(axis='y', labelcolor='red')
     ax2.set_yticks(np.arange(40, 240, 10))
 
-    # Adding dotted lines between PA and FP curves
+    # Adding dotted lines between PA and DIA curves
     for i in range(len(x)):
-        fp_value_scaled = ax1.get_ylim()[0] + (fp_values[i] - ax2.get_ylim()[0]) * (ax1.get_ylim()[1] - ax1.get_ylim()[0]) / (ax2.get_ylim()[1] - ax2.get_ylim()[0])
-        ax1.plot([x[i], x[i]], [pa_values[i], fp_value_scaled], color='black', linestyle='dotted', linewidth=1)
+        ax1.plot([x[i], x[i]], [pa_values[i], dia_values[i]], color='black', linestyle='dotted', linewidth=1)
+
+    # Shade the area between x=22:00 and x=07:00
+    start_index = time_labels.index('22:00')  # Find the index for 22:00
+    end_index = time_labels.index('07:00')    # Find the index for 07:00
+    last_index = len(time_labels) - 1          # Last index of the time labels
+    ax1.axvspan(start_index, end_index, color='gray', alpha=0.3)  # From 22:00 to end
 
     # Set x-axis ticks to represent time labels
     ax1.set_xticks(np.arange(0, len(time_labels), 2))
     ax1.set_xticklabels(time_labels[::2], rotation=90)
 
-    plt.title('Tendencia PA vs Tiempo')
+    # Add step line for yellow line with steps
+    step_x = np.array([0, start_index, start_index, end_index, end_index, last_index])  # Create the stepped x-values
+    step_y = np.array([135, 135, 120, 120, 135, 135])
+    ax1.step(step_x, step_y, color='yellow', linewidth=2, where='post')
+
+    # Add step line for yellow line with steps
+    step_x = np.array([0, start_index, start_index, end_index, end_index, last_index])  # Create the stepped x-values
+    step_y = np.array([85, 85, 70, 70, 85, 85])
+    ax1.step(step_x, step_y, color='yellow', linewidth=2, where='post')
+
+
+    plt.title('Tendencia PA y DIA vs Tiempo')
     ax1.grid(True)
+
+    # Add legends
+    ax1.legend(loc='upper left')
+    ax2.legend(loc='upper right')
 
     # Save plot to a BytesIO object
     img_buffer = BytesIO()
-    plt.savefig(img_buffer, format='png')
+    plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
     plt.close()
     img_buffer.seek(0)
 
     return img_buffer
+
+
+# The rest of your code remains unchanged
+
 
 
 def save_plot_to_pdf(img_buffer, pdf_filename, y):
@@ -143,11 +202,19 @@ def main():
         else:
             fp_values.append(int(i))
 
+
+    dia_values = []
+    for i in df['DIA']:
+        if re.search('-', i):
+            print(i)
+        else:
+            dia_values.append(int(i))
+
     # Extract time labels
     time_labels = df['Hora'].tolist()
 
     # Create custom plot and save it to a BytesIO object
-    img_buffer = create_custom_plot(pa_values, fp_values, time_labels)
+    img_buffer = create_custom_plot(pa_values, fp_values, dia_values, time_labels)
 
     # Specify the PDF filename
     pdf_filename = "customGraph.pdf"  # Output PDF file name
