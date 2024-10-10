@@ -22,7 +22,8 @@ def create_bar_graph(data, bins):
             percentage = f'{height / total:.0%}'
             plt.text(patches[i].get_x() + patches[i].get_width() / 2, height, percentage, ha='center', va='bottom')
 
-    plt.title('Histogram of PA Values')
+    plt.title('Histogram of PA Values
+    ')
 
     # Set x-axis ticks to be the bin edges
     plt.xticks(bins)
